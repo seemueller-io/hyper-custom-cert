@@ -255,7 +255,7 @@ fn complex_configuration_order() {
     headers.insert("Order".to_string(), "test".to_string());
 
     // Configuration in one order
-    let client1 = HttpClient::builder()
+    let _client1 = HttpClient::builder()
         .insecure_accept_invalid_certs(true)
         .with_root_ca_pem(TEST_CA_PEM)
         .with_pinned_cert_sha256(pins.clone())
@@ -264,7 +264,7 @@ fn complex_configuration_order() {
         .build();
 
     // Configuration in different order
-    let client2 = HttpClient::builder()
+    let _client2 = HttpClient::builder()
         .with_default_headers(headers)
         .with_timeout(Duration::from_secs(15))
         .with_pinned_cert_sha256(pins)
