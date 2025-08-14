@@ -2,21 +2,8 @@ name: Documentation
 
 on:
   push:
-    branches: [main]
-    paths:
-      - 'crates/hyper-custom-cert/src/**'
-      - 'crates/hyper-custom-cert/README.md'
-      - 'README.md'
-      - 'crates/hyper-custom-cert/Cargo.toml'
-      - '.github/workflows/docs.yml'
-  pull_request:
-    branches: [main]
-    paths:
-      - 'crates/hyper-custom-cert/src/**'
-      - 'crates/hyper-custom-cert/README.md'
-      - 'README.md'
-      - 'crates/hyper-custom-cert/Cargo.toml'
-      - '.github/workflows/docs.yml'
+    tags:
+      - 'v*'
 
 jobs:
   docs:
