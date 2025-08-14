@@ -364,7 +364,7 @@ dependencies = [
 
 [[package]]
 name = "hyper-custom-cert"
-version = "0.1.2"
+version = "0.1.3"
 dependencies = [
  "hyper-rustls",
  "hyper-tls",

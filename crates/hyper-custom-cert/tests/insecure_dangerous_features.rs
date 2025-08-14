@@ -7,7 +7,9 @@
 //! Never use this in production environments!
 
 use hyper_custom_cert::HttpClient;
+#[cfg(feature = "insecure-dangerous")]
 use std::collections::HashMap;
+#[cfg(feature = "insecure-dangerous")]
 use std::time::Duration;
 
 #[cfg(feature = "insecure-dangerous")]
