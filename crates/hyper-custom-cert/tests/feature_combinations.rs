@@ -9,7 +9,11 @@ use hyper_custom_cert::HttpClient;
     all(feature = "rustls", feature = "insecure-dangerous"),
     all(feature = "native-tls", feature = "insecure-dangerous"),
     not(any(feature = "rustls", feature = "insecure-dangerous")),
-    all(feature = "native-tls", feature = "rustls", feature = "insecure-dangerous")
+    all(
+        feature = "native-tls",
+        feature = "rustls",
+        feature = "insecure-dangerous"
+    )
 ))]
 use std::collections::HashMap;
 use std::time::Duration;
