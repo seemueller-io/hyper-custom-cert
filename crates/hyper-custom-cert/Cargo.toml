@@ -1,0 +1,42 @@
+[package]
+name = "hyper-custom-cert"
+version = "0.1.0"
+edition = "2021"
+description = "A small, ergonomic HTTP client wrapper around hyper with optional support for custom Root CAs and a dev-only insecure mode for self-signed certificates."
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/williamseemueller/http_client"
+documentation = "https://docs.rs/hyper-custom-cert"
+homepage = "https://docs.rs/hyper-custom-cert"
+readme = "README.md"
+keywords = ["hyper", "http-client", "tls", "rustls", "self-signed"]
+categories = ["asynchronous", "network-programming", "web-programming::http-client"]
+
+[lib]
+name = "hyper_custom_cert"
+path = "src/lib.rs"
+
+[dependencies]
+hyper-tls = { version = "0.6", optional = true }
+native-tls = { version = "0.2", optional = true }
+hyper-rustls = { version = "0.27", optional = true }
+rustls-pemfile = { version = "2", optional = true }
+
+[features]
+# TLS backend selection and safety controls
+# Default to native-tls so we use the OS trust store by default (secure default)
+default = ["native-tls"]
+
+# Use the operating system's native trust store via hyper-tls/native-tls
+native-tls = ["dep:hyper-tls", "dep:native-tls"]
+
+# Use rustls with the ability to add a custom Root CA via with_root_ca_pem
+# Recommended for securely connecting to services with a custom CA
+rustls = ["dep:hyper-rustls", "dep:rustls-pemfile"]
+
+# Extremely dangerous: only for local development/testing. Never use in production.
+# Unlocks builder methods to accept invalid/self-signed certs.
+insecure-dangerous = []
+
+[package.metadata.docs.rs]
+all-features = false
+no-default-features = false
