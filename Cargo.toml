@@ -1,0 +1,3 @@
+[workspace]
+members = ["crates/hyper-custom-cert"]
+resolver = "2"
