@@ -33,7 +33,9 @@
 use std::collections::HashMap;
 use std::error::Error as StdError;
 use std::fmt;
+#[cfg(feature = "rustls")]
 use std::fs;
+#[cfg(feature = "rustls")]
 use std::path::Path;
 use std::time::Duration;
 
@@ -265,15 +267,19 @@ impl HttpClientBuilder {
     /// ```
     #[cfg(feature = "rustls")]
     pub fn with_root_ca_file<P: AsRef<Path>>(mut self, path: P) -> Self {
-        let pem_bytes = fs::read(path.as_ref())
-            .unwrap_or_else(|e| panic!("Failed to read CA certificate file '{}': {}", 
-                                     path.as_ref().display(), e));
+        let pem_bytes = fs::read(path.as_ref()).unwrap_or_else(|e| {
+            panic!(
+                "Failed to read CA certificate file '{}': {}",
+                path.as_ref().display(),
+                e
+            )
+        });
         self.root_ca_pem = Some(pem_bytes);
         self
     }
 
     /// Configure certificate pinning using SHA256 fingerprints for additional security.
-    /// 
+    ///
     /// Certificate pinning provides an additional layer of security beyond CA validation
     /// by verifying that the server's certificate matches one of the provided fingerprints.
     /// This helps protect against compromised CAs and man-in-the-middle attacks.
@@ -303,7 +309,7 @@ impl HttpClientBuilder {
     ///     0x99, 0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0xff, 0x00,
     ///     0xa1, 0xb2, 0xc3, 0xd4, 0xe5, 0xf6, 0x07, 0x18
     /// ];
-    /// 
+    ///
     /// let pin2: [u8; 32] = [
     ///     0xf0, 0xe1, 0xd2, 0xc3, 0xb4, 0xa5, 0x96, 0x87,
     ///     0x78, 0x69, 0x5a, 0x4b, 0x3c, 0x2d, 0x1e, 0x0f,
@@ -397,7 +403,7 @@ mod tests {
         // Create a temporary file with test certificate content
         let temp_dir = std::env::temp_dir();
         let cert_file = temp_dir.join("test-ca.pem");
-        
+
         let test_cert = b"-----BEGIN CERTIFICATE-----
 MIICxjCCAa4CAQAwDQYJKoZIhvcNAQELBQAwEjEQMA4GA1UEAwwHVGVzdCBDQTAe
 Fw0yNTA4MTQwMDAwMDBaFw0yNjA4MTQwMDAwMDBaMBIxEDAOBgNVBAMMB1Rlc3Qg
@@ -407,13 +413,12 @@ Q0EwggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQDTest...
         // Write test certificate to temporary file
         {
             let mut file = fs::File::create(&cert_file).expect("Failed to create temp cert file");
-            file.write_all(test_cert).expect("Failed to write cert to temp file");
+            file.write_all(test_cert)
+                .expect("Failed to write cert to temp file");
         }
 
         // Test that the builder can read the certificate file
-        let client = HttpClient::builder()
-            .with_root_ca_file(&cert_file)
-            .build();
+        let client = HttpClient::builder().with_root_ca_file(&cert_file).build();
 
         // Verify the certificate was loaded
         assert!(client.root_ca_pem.is_some());
