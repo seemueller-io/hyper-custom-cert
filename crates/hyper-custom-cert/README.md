@@ -2,7 +2,7 @@
 
 [![Crates.io](https://img.shields.io/crates/v/hyper-custom-cert.svg)](https://crates.io/crates/hyper-custom-cert)
 [![docs.rs](https://img.shields.io/docsrs/hyper-custom-cert)](https://docs.rs/hyper-custom-cert)
-[![CI](https://github.com/seemueller-io/http_client/actions/workflows/ci.yml/badge.svg)](https://github.com/seemueller-io/http_client/actions)
+[![CI](https://github.com/seemueller-io/hyper-custom-cert/actions/workflows/ci.yml/badge.svg)](https://github.com/seemueller-io/hyper-custom-cert/actions)
 
 A reusable HTTP client builder API with clear, security‑focused feature flags for selecting your TLS backend and security posture.
 
