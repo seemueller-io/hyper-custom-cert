@@ -7,6 +7,8 @@
 //! Never use this in production environments!
 
 use hyper_custom_cert::HttpClient;
+use std::collections::HashMap;
+use std::time::Duration;
 
 #[cfg(feature = "insecure-dangerous")]
 #[test]
@@ -122,15 +124,15 @@ fn insecure_static_convenience_method() {
 #[test]
 fn insecure_multiple_configurations() {
     // Test creating multiple clients with different insecure settings
-    let client1 = HttpClient::builder()
+    let _client1 = HttpClient::builder()
         .insecure_accept_invalid_certs(true)
         .build();
 
-    let client2 = HttpClient::builder()
+    let _client2 = HttpClient::builder()
         .insecure_accept_invalid_certs(false)
         .build();
 
-    let client3 = HttpClient::builder()
+    let _client3 = HttpClient::builder()
         .with_timeout(Duration::from_secs(10))
         .insecure_accept_invalid_certs(true)
         .build();
