@@ -1,13 +1,13 @@
 [package]
 name = "hyper-custom-cert"
-version = "0.3.0"
+version = "0.3.1"
 edition = "2024"
 description = "A small, ergonomic HTTP client wrapper around hyper with optional support for custom Root CAs and a dev-only insecure mode for self-signed certificates."
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/seemueller-io/hyper-custom-cert"
 documentation = "https://docs.rs/hyper-custom-cert"
 homepage = "https://docs.rs/hyper-custom-cert"
-readme = "../../README.md"
+readme = "README.md"
 keywords = ["hyper", "http-client", "tls", "rustls", "self-signed"]
 categories = ["asynchronous", "network-programming", "web-programming::http-client"]
 
