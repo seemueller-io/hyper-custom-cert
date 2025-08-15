@@ -111,7 +111,7 @@ jobs:
       - name: Publish to crates.io
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
-        run: cargo publish
+        run: cargo rustdoc -p hyper-custom-cert --all-features && cargo publish
 
   release:
     name: Create GitHub Release

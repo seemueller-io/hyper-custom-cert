@@ -17,12 +17,7 @@ A small, ergonomic HTTP client wrapper around hyper with optional support for cu
 
 ## Quick Start
 
-Add this to your `Cargo.toml`:
-
-```toml
-[dependencies]
-hyper-custom-cert = "0.1.0"
-```
+`cargo add hyper-custom-cert`
 
 ### Basic Usage (Secure Default)
 
