@@ -70,3 +70,8 @@ jobs:
           if [ -n "${{ matrix.features }}" ]; then FLAGS="$FLAGS --features ${{ matrix.features }}"; fi
           echo "Running: cargo test $FLAGS -- --nocapture"
           cargo test $FLAGS -- --nocapture
+
+      - name: Build Docs
+        shell: bash
+        run: | 
+          cargo doc -p hyper-custom-cert --no-deps 
