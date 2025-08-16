@@ -42,7 +42,7 @@ For connecting to services with custom/private Certificate Authorities:
 
 ```toml
 [dependencies]
-hyper-custom-cert = { version = "0.1.0", features = ["rustls"] }
+hyper-custom-cert = { version = "<latest>", features = ["rustls"] }
 ```
 
 ```rust
