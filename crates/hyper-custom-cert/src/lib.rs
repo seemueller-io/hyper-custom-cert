@@ -6,10 +6,6 @@
 //! - A production-grade path to trust a custom Root CA by providing PEM bytes
 //! - Clear security boundaries and feature flags
 //!
-//! This crate is derived from a reference implementation located under
-//! `reference-implementation/hyper-custom-cert` in this repository. The reference
-//! implementation remains unchanged and serves as inspiration and verification.
-//!
 //! Note: Networking internals are intentionally abstracted for now; this crate
 //! focuses on a robust and secure configuration API surfaced via a builder.
 //!
