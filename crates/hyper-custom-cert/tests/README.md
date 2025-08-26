@@ -29,6 +29,13 @@ This directory contains comprehensive integration tests for all feature combinat
    - All features enabled scenarios
    - Method chaining and configuration order independence
 
+5. **`example_server_integration.rs`** - Integration tests that execute requests against the example server
+   - Comprehensive test suite that validates HttpClient against example server endpoints
+   - Tests all feature combinations with realistic usage patterns
+   - Covers basic client tests, feature-specific functionality, HTTP methods, and error handling
+   - Works with current placeholder implementation while being ready for actual HTTP functionality
+   - 24 comprehensive test functions covering various scenarios and feature combinations
+
 ## Running Tests
 
 ### Default Features Only

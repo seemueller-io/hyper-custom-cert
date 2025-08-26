@@ -147,6 +147,14 @@ fn rustls_with_timeout_and_ca() {
     // Test passes if compilation succeeds
 }
 
+#[cfg(feature = "rustls")]
+#[test]
+fn rustls_post_smoke() {
+    // Smoke test for POST support when rustls feature is enabled
+    let client = HttpClient::new();
+    let _ = client.post("https://example.com/api", b"{\"a\":1}");
+}
+
 // Test that runs only when rustls feature is NOT enabled
 #[cfg(not(feature = "rustls"))]
 #[test]

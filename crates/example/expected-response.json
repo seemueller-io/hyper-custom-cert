@@ -1,0 +1,48 @@
+{
+  "description": "Comprehensive test server for integration testing the hyper-custom-cert library",
+  "endpoints": {
+    "basic_tests": {
+      "/test/client/builder": "Test HttpClient builder pattern",
+      "/test/client/combined": "Test combined configuration options",
+      "/test/client/default": "Test default HttpClient creation",
+      "/test/client/headers": "Test custom headers configuration",
+      "/test/client/timeout": "Test timeout configuration"
+    },
+    "config_tests": {
+      "/test/config/headers/{count}": "Test custom header configurations",
+      "/test/config/timeout/{seconds}": "Test custom timeout values"
+    },
+    "error_tests": {
+      "/test/errors/connection": "Test connection error handling",
+      "/test/errors/invalid-url": "Test invalid URL handling",
+      "/test/errors/timeout": "Test timeout error handling"
+    },
+    "feature_tests": {
+      "/test/features/insecure": "Test insecure-dangerous feature",
+      "/test/features/native-tls": "Test native-tls backend functionality",
+      "/test/features/rustls": "Test rustls backend functionality"
+    },
+    "method_tests": {
+      "/test/methods/delete": "Test HTTP DELETE requests",
+      "/test/methods/get": "Test HTTP GET requests",
+      "/test/methods/post": "Test HTTP POST requests",
+      "/test/methods/put": "Test HTTP PUT requests"
+    },
+    "tls_tests": {
+      "/test/tls/cert-pinning": "Test certificate pinning",
+      "/test/tls/custom-ca": "Test custom CA certificate loading",
+      "/test/tls/self-signed": "Test self-signed certificate handling"
+    },
+    "utility": {
+      "/health": "Health check endpoint",
+      "/status": "Server status information"
+    }
+  },
+  "features_available": [
+    "native-tls",
+    "rustls",
+    "insecure-dangerous"
+  ],
+  "name": "Hyper-Custom-Cert Test Harness",
+  "version": "1.0.0"
+}

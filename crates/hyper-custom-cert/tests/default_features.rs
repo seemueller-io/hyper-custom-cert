@@ -96,3 +96,11 @@ fn default_client_static_method() {
     // Test the static convenience method
     let _client = HttpClient::default();
 }
+
+
+#[test]
+fn post_smoke_default() {
+    // Smoke test for POST support with default features
+    let client = HttpClient::new();
+    let _ = client.post("https://example.com/api", b"{} ");
+}

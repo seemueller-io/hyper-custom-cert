@@ -129,6 +129,21 @@ impl HttpClient {
         let _ = &self.pinned_cert_sha256;
         Ok(())
     }
+
+    /// Minimal runtime method to demonstrate a POST request.
+    /// On native targets, this currently returns Ok(()) as a placeholder
+    /// without performing network I/O.
+    pub fn post<B: AsRef<[u8]>>(&self, _url: &str, body: B) -> Result<(), ClientError> {
+        // Touch configuration fields and body to avoid dead_code warnings until
+        // network I/O is implemented.
+        let _ = (&self.timeout, &self.default_headers, &self.root_ca_pem);
+        #[cfg(feature = "insecure-dangerous")]
+        let _ = &self.accept_invalid_certs;
+        #[cfg(feature = "rustls")]
+        let _ = &self.pinned_cert_sha256;
+        let _ = body.as_ref();
+        Ok(())
+    }
 }
 
 // WebAssembly stubbed runtime implementation
@@ -138,6 +153,11 @@ impl HttpClient {
     /// `ClientError::WasmNotImplemented` because browsers do not allow
     /// programmatic installation/trust of custom CAs.
     pub fn request(&self, _url: &str) -> Result<(), ClientError> {
+        Err(ClientError::WasmNotImplemented)
+    }
+
+    /// POST is also not implemented on wasm32 targets for the same reason.
+    pub fn post<B: AsRef<[u8]>>(&self, _url: &str, _body: B) -> Result<(), ClientError> {
         Err(ClientError::WasmNotImplemented)
     }
 }
@@ -387,6 +407,14 @@ mod tests {
     fn request_returns_ok_on_native() {
         let client = HttpClient::builder().build();
         let res = client.request("https://example.com");
+        assert!(res.is_ok());
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    #[test]
+    fn post_returns_ok_on_native() {
+        let client = HttpClient::builder().build();
+        let res = client.post("https://example.com/api", b"{\"k\":\"v\"}");
         assert!(res.is_ok());
     }
 
