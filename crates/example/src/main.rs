@@ -10,7 +10,7 @@ use serde_json::{json, Value};
 use std::collections::HashMap;
 use std::time::Duration;
 
-const SERVER_ADDRESS: &str = "0.0.0.0:8393";
+const SERVER_ADDRESS: &str = "127.0.0.1:8393";
 
 #[derive(Serialize)]
 struct TestResponse {
