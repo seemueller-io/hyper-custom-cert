@@ -36,10 +36,64 @@ use std::path::Path;
 use std::time::Duration;
 
 use bytes::Bytes;
-use hyper::{body::Incoming, Request, Response, StatusCode, Uri, Method};
+use http_body_util::BodyExt;
+use hyper::{body::Incoming, Method, Request, Response, StatusCode, Uri};
 use hyper_util::client::legacy::Client;
 use hyper_util::rt::TokioExecutor;
-use http_body_util::BodyExt;
+
+/// Options for controlling HTTP requests.
+///
+/// This struct provides a flexible interface for configuring individual
+/// HTTP requests without modifying the client's default settings.
+///
+/// # Examples
+///
+/// Adding custom headers to a specific request:
+///
+/// ```
+/// use hyper_custom_cert::{HttpClient, RequestOptions};
+/// use std::collections::HashMap;
+///
+/// // Create request-specific headers
+/// let mut headers = HashMap::new();
+/// headers.insert("x-request-id".to_string(), "123456".to_string());
+///
+/// // Create request options with these headers
+/// let options = RequestOptions::new()
+///     .with_headers(headers);
+///
+/// // Make request with custom options
+/// # async {
+/// let client = HttpClient::new();
+/// let _response = client.request_with_options("https://example.com", Some(options)).await;
+/// # };
+/// ```
+#[derive(Default, Clone)]
+pub struct RequestOptions {
+    /// Headers to add to this specific request
+    pub headers: Option<HashMap<String, String>>,
+    /// Override the client's default timeout for this request
+    pub timeout: Option<Duration>,
+}
+
+impl RequestOptions {
+    /// Create a new empty RequestOptions with default values.
+    pub fn new() -> Self {
+        RequestOptions::default()
+    }
+
+    /// Add custom headers to this request.
+    pub fn with_headers(mut self, headers: HashMap<String, String>) -> Self {
+        self.headers = Some(headers);
+        self
+    }
+
+    /// Override the client's default timeout for this request.
+    pub fn with_timeout(mut self, timeout: Duration) -> Self {
+        self.timeout = Some(timeout);
+        self
+    }
+}
 
 /// HTTP response with raw body data exposed as bytes.
 #[derive(Debug, Clone)]
@@ -131,7 +185,7 @@ impl From<hyper_util::client::legacy::Error> for ClientError {
 /// Build a client with a custom timeout and default headers:
 ///
 /// ```
-/// use hyper_custom_cert::HttpClient;
+/// use hyper_custom_cert::{HttpClient, RequestOptions};
 /// use std::time::Duration;
 /// use std::collections::HashMap;
 ///
@@ -144,7 +198,7 @@ impl From<hyper_util::client::legacy::Error> for ClientError {
 ///     .build();
 ///
 /// // Placeholder call; does not perform I/O in this crate.
-/// let _ = client.request("https://example.com");
+/// let _ = client.request_with_options("https://example.com", None);
 /// ```
 pub struct HttpClient {
     timeout: Duration,
@@ -185,32 +239,32 @@ impl HttpClient {
     /// Convenience constructor that enables acceptance of self-signed/invalid
     /// certificates. This is gated behind the `insecure-dangerous` feature and intended
     /// strictly for development and testing. NEVER enable in production.
-    /// 
+    ///
     /// # Security Warning
-    /// 
+    ///
     /// ⚠️ CRITICAL SECURITY WARNING ⚠️
-    /// 
+    ///
     /// This method deliberately bypasses TLS certificate validation, creating a
     /// serious security vulnerability to man-in-the-middle attacks. When used:
-    /// 
+    ///
     /// - ANY certificate will be accepted, regardless of its validity
     /// - Expired certificates will be accepted
     /// - Certificates from untrusted issuers will be accepted
     /// - Certificates for the wrong domain will be accepted
-    /// 
+    ///
     /// This is equivalent to calling `insecure_accept_invalid_certs(true)` on the builder
     /// and inherits all of its security implications. See that method's documentation
     /// for more details.
-    /// 
+    ///
     /// # Intended Use Cases
-    /// 
+    ///
     /// This method should ONLY be used for:
     /// - Local development with self-signed certificates
     /// - Testing environments where security is not a concern
     /// - Debugging TLS connection issues
-    /// 
+    ///
     /// # Implementation Details
-    /// 
+    ///
     /// This is a convenience wrapper that calls:
     /// ```ignore
     /// HttpClient::builder()
@@ -234,13 +288,76 @@ impl HttpClient {
     /// This method constructs a `hyper::Request` with the GET method and any
     /// default headers configured on the client, then dispatches it via `perform_request`.
     /// Returns HttpResponse with raw body data exposed without any permutations.
+    ///
+    /// # Arguments
+    ///
+    /// * `url` - The URL to request
+    /// * `options` - Optional request options to customize this specific request
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # async {
+    /// use hyper_custom_cert::{HttpClient, RequestOptions};
+    /// use std::collections::HashMap;
+    ///
+    /// let client = HttpClient::new();
+    ///
+    /// // Basic request with no custom options
+    /// let response1 = client.request_with_options("https://example.com", None).await?;
+    ///
+    /// // Request with custom options
+    /// let mut headers = HashMap::new();
+    /// headers.insert("x-request-id".into(), "abc123".into());
+    /// let options = RequestOptions::new().with_headers(headers);
+    /// let response2 = client.request_with_options("https://example.com", Some(options)).await?;
+    /// # Ok::<(), hyper_custom_cert::ClientError>(())
+    /// # };
+    /// ```
+    #[deprecated(since = "0.4.0", note = "Use request(url, Some(options)) instead")]
     pub async fn request(&self, url: &str) -> Result<HttpResponse, ClientError> {
+        self.request_with_options(url, None).await
+    }
+
+    /// Performs a GET request and returns the raw response body.
+    /// This method constructs a `hyper::Request` with the GET method and any
+    /// default headers configured on the client, then dispatches it via `perform_request`.
+    /// Returns HttpResponse with raw body data exposed without any permutations.
+    ///
+    /// # Arguments
+    ///
+    /// * `url` - The URL to request
+    /// * `options` - Optional request options to customize this specific request
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # async {
+    /// use hyper_custom_cert::{HttpClient, RequestOptions};
+    /// use std::collections::HashMap;
+    ///
+    /// let client = HttpClient::new();
+    ///
+    /// // Basic request with no custom options
+    /// let response1 = client.request_with_options("https://example.com", None).await?;
+    ///
+    /// // Request with custom options
+    /// let mut headers = HashMap::new();
+    /// headers.insert("x-request-id".into(), "abc123".into());
+    /// let options = RequestOptions::new().with_headers(headers);
+    /// let response2 = client.request_with_options("https://example.com", Some(options)).await?;
+    /// # Ok::<(), hyper_custom_cert::ClientError>(())
+    /// # };
+    /// ```
+    pub async fn request_with_options(
+        &self,
+        url: &str,
+        options: Option<RequestOptions>,
+    ) -> Result<HttpResponse, ClientError> {
         let uri: Uri = url.parse()?;
-        
-        let req = Request::builder()
-            .method(Method::GET)
-            .uri(uri);
-        
+
+        let req = Request::builder().method(Method::GET).uri(uri);
+
         // Add default headers to the request. This ensures that any headers
         // set during the client's construction (e.g., API keys, User-Agent)
         // are automatically included in outgoing requests.
@@ -248,10 +365,43 @@ impl HttpClient {
         for (key, value) in &self.default_headers {
             req = req.header(key, value);
         }
-        
+
+        // Add any request-specific headers from options
+        if let Some(options) = &options {
+            if let Some(headers) = &options.headers {
+                for (key, value) in headers {
+                    req = req.header(key, value);
+                }
+            }
+        }
+
         let req = req.body(http_body_util::Empty::<Bytes>::new())?;
-        
-        self.perform_request(req).await
+
+        // If options contain a timeout, temporarily modify self to use it
+        // This is a bit of a hack since we can't modify perform_request easily
+        if let Some(opts) = &options {
+            if let Some(timeout) = opts.timeout {
+                // Create a copy of self with the new timeout
+                let client_copy = HttpClient {
+                    timeout,
+                    default_headers: self.default_headers.clone(),
+                    #[cfg(feature = "insecure-dangerous")]
+                    accept_invalid_certs: self.accept_invalid_certs,
+                    root_ca_pem: self.root_ca_pem.clone(),
+                    #[cfg(feature = "rustls")]
+                    pinned_cert_sha256: self.pinned_cert_sha256.clone(),
+                };
+
+                // Use the modified client for this request only
+                client_copy.perform_request(req).await
+            } else {
+                // No timeout override, use normal client
+                self.perform_request(req).await
+            }
+        } else {
+            // No options, use normal client
+            self.perform_request(req).await
+        }
     }
 
     /// Performs a POST request with the given body and returns the raw response.
@@ -259,30 +409,143 @@ impl HttpClient {
     /// operation, handles the request body conversion to `Bytes`, and applies
     /// default headers before calling `perform_request`.
     /// Returns HttpResponse with raw body data exposed without any permutations.
-    pub async fn post<B: AsRef<[u8]>>(&self, url: &str, body: B) -> Result<HttpResponse, ClientError> {
+    ///
+    /// # Arguments
+    ///
+    /// * `url` - The URL to request
+    /// * `body` - The body content to send with the POST request
+    /// * `options` - Optional request options to customize this specific request
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # async {
+    /// use hyper_custom_cert::{HttpClient, RequestOptions};
+    /// use std::collections::HashMap;
+    /// use std::time::Duration;
+    ///
+    /// let client = HttpClient::new();
+    ///
+    /// // Basic POST request with no custom options
+    /// let response1 = client.post_with_options("https://example.com/api", b"{\"key\":\"value\"}", None).await?;
+    ///
+    /// // POST request with custom options
+    /// let mut headers = HashMap::new();
+    /// headers.insert("Content-Type".into(), "application/json".into());
+    /// let options = RequestOptions::new()
+    ///     .with_headers(headers)
+    ///     .with_timeout(Duration::from_secs(5));
+    /// let response2 = client.post_with_options("https://example.com/api", b"{\"key\":\"value\"}", Some(options)).await?;
+    /// # Ok::<(), hyper_custom_cert::ClientError>(())
+    /// # };
+    /// ```
+    #[deprecated(
+        since = "0.4.0",
+        note = "Use post_with_options(url, body, Some(options)) instead"
+    )]
+    pub async fn post<B: AsRef<[u8]>>(
+        &self,
+        url: &str,
+        body: B,
+    ) -> Result<HttpResponse, ClientError> {
+        self.post_with_options(url, body, None).await
+    }
+
+    /// Performs a POST request with the given body and returns the raw response.
+    /// Similar to `request`, this method builds a `hyper::Request` for a POST
+    /// operation, handles the request body conversion to `Bytes`, and applies
+    /// default headers before calling `perform_request`.
+    /// Returns HttpResponse with raw body data exposed without any permutations.
+    ///
+    /// # Arguments
+    ///
+    /// * `url` - The URL to request
+    /// * `body` - The body content to send with the POST request
+    /// * `options` - Optional request options to customize this specific request
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # async {
+    /// use hyper_custom_cert::{HttpClient, RequestOptions};
+    /// use std::collections::HashMap;
+    /// use std::time::Duration;
+    ///
+    /// let client = HttpClient::new();
+    ///
+    /// // Basic POST request with no custom options
+    /// let response1 = client.post_with_options("https://example.com/api", b"{\"key\":\"value\"}", None).await?;
+    ///
+    /// // POST request with custom options
+    /// let mut headers = HashMap::new();
+    /// headers.insert("Content-Type".into(), "application/json".into());
+    /// let options = RequestOptions::new()
+    ///     .with_headers(headers)
+    ///     .with_timeout(Duration::from_secs(5));
+    /// let response2 = client.post_with_options("https://example.com/api", b"{\"key\":\"value\"}", Some(options)).await?;
+    /// # Ok::<(), hyper_custom_cert::ClientError>(())
+    /// # };
+    /// ```
+    pub async fn post_with_options<B: AsRef<[u8]>>(
+        &self,
+        url: &str,
+        body: B,
+        options: Option<RequestOptions>,
+    ) -> Result<HttpResponse, ClientError> {
         let uri: Uri = url.parse()?;
-        
-        let req = Request::builder()
-            .method(Method::POST)
-            .uri(uri);
-        
+
+        let req = Request::builder().method(Method::POST).uri(uri);
+
         // Add default headers to the request for consistency across client operations.
         let mut req = req;
         for (key, value) in &self.default_headers {
             req = req.header(key, value);
         }
-        
+
+        // Add any request-specific headers from options
+        if let Some(options) = &options {
+            if let Some(headers) = &options.headers {
+                for (key, value) in headers {
+                    req = req.header(key, value);
+                }
+            }
+        }
+
         let body_bytes = Bytes::copy_from_slice(body.as_ref());
         let req = req.body(http_body_util::Full::new(body_bytes))?;
-        
-        self.perform_request(req).await
+
+        // If options contain a timeout, temporarily modify self to use it
+        // This is a bit of a hack since we can't modify perform_request easily
+        if let Some(opts) = &options {
+            if let Some(timeout) = opts.timeout {
+                // Create a copy of self with the new timeout
+                let client_copy = HttpClient {
+                    timeout,
+                    default_headers: self.default_headers.clone(),
+                    #[cfg(feature = "insecure-dangerous")]
+                    accept_invalid_certs: self.accept_invalid_certs,
+                    root_ca_pem: self.root_ca_pem.clone(),
+                    #[cfg(feature = "rustls")]
+                    pinned_cert_sha256: self.pinned_cert_sha256.clone(),
+                };
+
+                // Use the modified client for this request only
+                client_copy.perform_request(req).await
+            } else {
+                // No timeout override, use normal client
+                self.perform_request(req).await
+            }
+        } else {
+            // No options, use normal client
+            self.perform_request(req).await
+        }
     }
 
     /// Helper method to perform HTTP requests using the configured settings.
     /// This centralizes the logic for dispatching `hyper::Request` objects,
     /// handling the various TLS backends (native-tls, rustls) and ensuring
     /// the correct `hyper` client is used based on feature flags.
-    async fn perform_request<B>(&self, req: Request<B>) -> Result<HttpResponse, ClientError> 
+    async fn perform_request<B>(&self, req: Request<B>) -> Result<HttpResponse, ClientError>
     where
         B: hyper::body::Body + Send + 'static + Unpin,
         B::Data: Send,
@@ -292,46 +555,44 @@ impl HttpClient {
         {
             // When the "native-tls" feature is enabled, use `hyper-tls` for TLS
             // support, which integrates with the system's native TLS libraries.
-            
+
             #[cfg(feature = "insecure-dangerous")]
             if self.accept_invalid_certs {
                 // ⚠️ SECURITY WARNING: This code path deliberately bypasses TLS certificate validation.
                 // It should only be used during development/testing with self-signed certificates,
-                // and NEVER in production environments. This creates a vulnerability to 
+                // and NEVER in production environments. This creates a vulnerability to
                 // man-in-the-middle attacks and is extremely dangerous.
-                
+
                 // Implementation with tokio-native-tls to accept invalid certificates
                 let mut http_connector = hyper_util::client::legacy::connect::HttpConnector::new();
                 http_connector.enforce_http(false);
-                
+
                 // Create a TLS connector that accepts invalid certificates
                 let mut tls_builder = native_tls::TlsConnector::builder();
                 tls_builder.danger_accept_invalid_certs(true);
-                let tls_connector = tls_builder.build()
-                    .map_err(|e| ClientError::TlsError(format!("Failed to build TLS connector: {}", e)))?;
-                
+                let tls_connector = tls_builder.build().map_err(|e| {
+                    ClientError::TlsError(format!("Failed to build TLS connector: {}", e))
+                })?;
+
                 // Create the tokio-native-tls connector
                 let tokio_connector = tokio_native_tls::TlsConnector::from(tls_connector);
-                
+
                 // Create the HTTPS connector using the HTTP and TLS connectors
                 let connector = hyper_tls::HttpsConnector::from((http_connector, tokio_connector));
-                
-                let client = Client::builder(TokioExecutor::new())
-                    .build(connector);
+
+                let client = Client::builder(TokioExecutor::new()).build(connector);
                 let resp = tokio::time::timeout(self.timeout, client.request(req))
                     .await
-                    .map_err(|_| ClientError::TlsError("Request timed out".to_string()))?
-                    ?;
+                    .map_err(|_| ClientError::TlsError("Request timed out".to_string()))??;
                 return self.build_response(resp).await;
             }
-            
+
             // Standard secure TLS connection with certificate validation (default path)
             let connector = hyper_tls::HttpsConnector::new();
             let client = Client::builder(TokioExecutor::new()).build(connector);
             let resp = tokio::time::timeout(self.timeout, client.request(req))
                 .await
-                .map_err(|_| ClientError::TlsError("Request timed out".to_string()))?
-                ?;
+                .map_err(|_| ClientError::TlsError("Request timed out".to_string()))??;
             self.build_response(resp).await
         }
         #[cfg(all(feature = "rustls", not(feature = "native-tls")))]
@@ -339,58 +600,70 @@ impl HttpClient {
             // If "rustls" is enabled and "native-tls" is not, use `rustls` for TLS.
             // Properly configure the rustls connector with custom CA certificates and/or
             // certificate validation settings based on the client configuration.
-            
+
             // Start with the standard rustls config with native roots
             let mut root_cert_store = rustls::RootCertStore::empty();
-            
+
             // Load native certificates using rustls_native_certs v0.8.1
             // This returns a CertificateResult which has a certs field containing the certificates
             let native_certs = rustls_native_certs::load_native_certs();
-            
+
             // Add each cert to the root store
             for cert in &native_certs.certs {
                 if let Err(e) = root_cert_store.add(cert.clone()) {
-                    return Err(ClientError::TlsError(format!("Failed to add native cert to root store: {}", e)));
+                    return Err(ClientError::TlsError(format!(
+                        "Failed to add native cert to root store: {}",
+                        e
+                    )));
                 }
             }
-            
+
             // Add custom CA certificate if provided
             if let Some(ref pem_bytes) = self.root_ca_pem {
                 let mut reader = std::io::Cursor::new(pem_bytes);
                 for cert_result in rustls_pemfile::certs(&mut reader) {
                     match cert_result {
                         Ok(cert) => {
-                            root_cert_store.add(cert)
-                                .map_err(|e| ClientError::TlsError(format!("Failed to add custom cert to root store: {}", e)))?;
-                        },
-                        Err(e) => return Err(ClientError::TlsError(format!("Failed to parse PEM cert: {}", e))),
+                            root_cert_store.add(cert).map_err(|e| {
+                                ClientError::TlsError(format!(
+                                    "Failed to add custom cert to root store: {}",
+                                    e
+                                ))
+                            })?;
+                        }
+                        Err(e) => {
+                            return Err(ClientError::TlsError(format!(
+                                "Failed to parse PEM cert: {}",
+                                e
+                            )));
+                        }
                     }
                 }
             }
-            
+
             // Configure rustls
-            let mut config_builder = rustls::ClientConfig::builder()
-                .with_root_certificates(root_cert_store);
-            
+            let mut config_builder =
+                rustls::ClientConfig::builder().with_root_certificates(root_cert_store);
+
             let rustls_config = config_builder.with_no_client_auth();
-            
+
             #[cfg(feature = "insecure-dangerous")]
             let rustls_config = if self.accept_invalid_certs {
                 // ⚠️ SECURITY WARNING: This code path deliberately bypasses TLS certificate validation.
                 // It should only be used during development/testing with self-signed certificates,
-                // and NEVER in production environments. This creates a vulnerability to 
+                // and NEVER in production environments. This creates a vulnerability to
                 // man-in-the-middle attacks and is extremely dangerous.
-                
-                use std::sync::Arc;
+
                 use rustls::client::danger::{HandshakeSignatureValid, ServerCertVerified};
+                use rustls::pki_types::UnixTime;
                 use rustls::DigitallySignedStruct;
                 use rustls::SignatureScheme;
-                use rustls::pki_types::UnixTime;
-                
+                use std::sync::Arc;
+
                 // Override the certificate verifier with a no-op verifier that accepts all certificates
                 #[derive(Debug)]
                 struct NoCertificateVerification {}
-                
+
                 impl rustls::client::danger::ServerCertVerifier for NoCertificateVerification {
                     fn verify_server_cert(
                         &self,
@@ -403,7 +676,7 @@ impl HttpClient {
                         // Accept any certificate without verification
                         Ok(ServerCertVerified::assertion())
                     }
-                    
+
                     fn verify_tls12_signature(
                         &self,
                         _message: &[u8],
@@ -413,7 +686,7 @@ impl HttpClient {
                         // Accept any TLS 1.2 signature without verification
                         Ok(HandshakeSignatureValid::assertion())
                     }
-                    
+
                     fn verify_tls13_signature(
                         &self,
                         _message: &[u8],
@@ -423,7 +696,7 @@ impl HttpClient {
                         // Accept any TLS 1.3 signature without verification
                         Ok(HandshakeSignatureValid::assertion())
                     }
-                    
+
                     fn supported_verify_schemes(&self) -> Vec<SignatureScheme> {
                         // Return a list of all supported signature schemes
                         vec![
@@ -443,31 +716,35 @@ impl HttpClient {
                         ]
                     }
                 }
-                
+
                 // Set up the dangerous configuration with no certificate verification
                 let mut config = rustls_config.clone();
-                config.dangerous().set_certificate_verifier(Arc::new(NoCertificateVerification {}));
+                config
+                    .dangerous()
+                    .set_certificate_verifier(Arc::new(NoCertificateVerification {}));
                 config
             } else {
                 rustls_config
             };
-            
+
             // Handle certificate pinning if configured
             #[cfg(feature = "rustls")]
             let rustls_config = if let Some(ref pins) = self.pinned_cert_sha256 {
                 // Implement certificate pinning by creating a custom certificate verifier
-                use std::sync::Arc;
-                use rustls::client::danger::{HandshakeSignatureValid, ServerCertVerified, ServerCertVerifier};
+                use rustls::client::danger::{
+                    HandshakeSignatureValid, ServerCertVerified, ServerCertVerifier,
+                };
+                use rustls::pki_types::{CertificateDer, ServerName, UnixTime};
                 use rustls::DigitallySignedStruct;
                 use rustls::SignatureScheme;
-                use rustls::pki_types::{CertificateDer, ServerName, UnixTime};
-                
+                use std::sync::Arc;
+
                 // Create a custom certificate verifier that checks certificate pins
                 struct CertificatePinner {
                     pins: Vec<[u8; 32]>,
                     inner: Arc<dyn ServerCertVerifier>,
                 }
-                
+
                 impl ServerCertVerifier for CertificatePinner {
                     fn verify_server_cert(
                         &self,
@@ -478,28 +755,36 @@ impl HttpClient {
                         now: UnixTime,
                     ) -> Result<ServerCertVerified, rustls::Error> {
                         // First, use the inner verifier to do standard verification
-                        self.inner.verify_server_cert(end_entity, intermediates, server_name, ocsp_response, now)?;
-                        
+                        self.inner.verify_server_cert(
+                            end_entity,
+                            intermediates,
+                            server_name,
+                            ocsp_response,
+                            now,
+                        )?;
+
                         // Then verify the pin
-                        use sha2::{Sha256, Digest};
-                        
+                        use sha2::{Digest, Sha256};
+
                         let mut hasher = Sha256::new();
                         hasher.update(end_entity.as_ref());
                         let cert_hash = hasher.finalize();
-                        
+
                         // Check if the certificate hash matches any of our pins
                         for pin in &self.pins {
                             if pin[..] == cert_hash[..] {
                                 return Ok(ServerCertVerified::assertion());
                             }
                         }
-                        
+
                         // If we got here, none of the pins matched
-                        Err(rustls::Error::General("Certificate pin verification failed".into()))
+                        Err(rustls::Error::General(
+                            "Certificate pin verification failed".into(),
+                        ))
                     }
-                    
+
                     fn verify_tls12_signature(
-                        &self, 
+                        &self,
                         message: &[u8],
                         cert: &CertificateDer<'_>,
                         dss: &DigitallySignedStruct,
@@ -507,7 +792,7 @@ impl HttpClient {
                         // Delegate to inner verifier
                         self.inner.verify_tls12_signature(message, cert, dss)
                     }
-                    
+
                     fn verify_tls13_signature(
                         &self,
                         message: &[u8],
@@ -517,46 +802,50 @@ impl HttpClient {
                         // Delegate to inner verifier
                         self.inner.verify_tls13_signature(message, cert, dss)
                     }
-                    
+
                     fn supported_verify_schemes(&self) -> Vec<SignatureScheme> {
                         self.inner.supported_verify_schemes()
                     }
                 }
-                
+
                 // Create the certificate pinner with our pins and the default verifier
                 let mut config = rustls_config.clone();
                 let default_verifier = rustls::client::WebPkiServerVerifier::builder()
                     .with_root_certificates(root_cert_store.clone())
                     .build()
-                    .map_err(|e| ClientError::TlsError(format!("Failed to build certificate verifier: {}", e)))?;
-                
+                    .map_err(|e| {
+                        ClientError::TlsError(format!(
+                            "Failed to build certificate verifier: {}",
+                            e
+                        ))
+                    })?;
+
                 let cert_pinner = Arc::new(CertificatePinner {
                     pins: pins.clone(),
                     inner: default_verifier,
                 });
-                
+
                 config.dangerous().set_certificate_verifier(cert_pinner);
                 config
             } else {
                 rustls_config
             };
-            
+
             // Create a connector that supports HTTP and HTTPS
             let mut http_connector = hyper_util::client::legacy::connect::HttpConnector::new();
             http_connector.enforce_http(false);
-            
+
             // Create the rustls connector using HttpsConnectorBuilder
             let https_connector = hyper_rustls::HttpsConnectorBuilder::new()
                 .with_tls_config(rustls_config)
                 .https_or_http()
                 .enable_http1()
                 .build();
-            
+
             let client = Client::builder(TokioExecutor::new()).build(https_connector);
             let resp = tokio::time::timeout(self.timeout, client.request(req))
                 .await
-                .map_err(|_| ClientError::TlsError("Request timed out".to_string()))?
-                ?;
+                .map_err(|_| ClientError::TlsError("Request timed out".to_string()))??;
             self.build_response(resp).await
         }
         #[cfg(not(any(feature = "native-tls", feature = "rustls")))]
@@ -569,8 +858,7 @@ impl HttpClient {
             let client = Client::builder(TokioExecutor::new()).build(connector);
             let resp = tokio::time::timeout(self.timeout, client.request(req))
                 .await
-                .map_err(|_| ClientError::TlsError("Request timed out".to_string()))?
-                ?;
+                .map_err(|_| ClientError::TlsError("Request timed out".to_string()))??;
             self.build_response(resp).await
         }
     }
@@ -581,7 +869,7 @@ impl HttpClient {
     /// response body into a `Bytes` buffer for easy consumption by the caller.
     async fn build_response(&self, resp: Response<Incoming>) -> Result<HttpResponse, ClientError> {
         let status = resp.status();
-        
+
         // Convert hyper's `HeaderMap` to a `HashMap<String, String>` for simpler
         // public API exposure, making header access more idiomatic for consumers.
         let mut headers = HashMap::new();
@@ -590,12 +878,12 @@ impl HttpClient {
                 headers.insert(name.to_string(), value_str.to_string());
             }
         }
-        
+
         // Collect the body as raw bytes - this is the key part of the issue
         // We expose the body as raw bytes without any permutations, ensuring
         // the client receives the exact byte content of the response.
         let body_bytes = resp.into_body().collect().await?.to_bytes();
-        
+
         Ok(HttpResponse {
             status,
             headers,
@@ -610,12 +898,41 @@ impl HttpClient {
     /// On wasm32 targets, runtime methods are stubbed and return
     /// `ClientError::WasmNotImplemented` because browsers do not allow
     /// programmatic installation/trust of custom CAs.
+    #[deprecated(
+        since = "0.4.0",
+        note = "Use request_with_options(url, Some(options)) instead"
+    )]
     pub fn request(&self, _url: &str) -> Result<(), ClientError> {
         Err(ClientError::WasmNotImplemented)
     }
 
+    /// On wasm32 targets, runtime methods are stubbed and return
+    /// `ClientError::WasmNotImplemented` because browsers do not allow
+    /// programmatic installation/trust of custom CAs.
+    pub fn request_with_options(
+        &self,
+        _url: &str,
+        _options: Option<RequestOptions>,
+    ) -> Result<(), ClientError> {
+        Err(ClientError::WasmNotImplemented)
+    }
+
     /// POST is also not implemented on wasm32 targets for the same reason.
+    #[deprecated(
+        since = "0.4.0",
+        note = "Use post_with_options(url, body, Some(options)) instead"
+    )]
     pub fn post<B: AsRef<[u8]>>(&self, _url: &str, _body: B) -> Result<(), ClientError> {
+        Err(ClientError::WasmNotImplemented)
+    }
+
+    /// POST is also not implemented on wasm32 targets for the same reason.
+    pub fn post_with_options<B: AsRef<[u8]>>(
+        &self,
+        _url: &str,
+        _body: B,
+        _options: Option<RequestOptions>,
+    ) -> Result<(), ClientError> {
         Err(ClientError::WasmNotImplemented)
     }
 }
@@ -659,26 +976,26 @@ impl HttpClientBuilder {
 
     /// Dev-only: accept self-signed/invalid TLS certificates. Requires the
     /// `insecure-dangerous` feature to be enabled. NEVER enable this in production.
-    /// 
+    ///
     /// # Security Warning
-    /// 
+    ///
     /// ⚠️ CRITICAL SECURITY WARNING ⚠️
-    /// 
+    ///
     /// This method deliberately bypasses TLS certificate validation, which creates a
     /// serious security vulnerability to man-in-the-middle attacks. When enabled:
-    /// 
+    ///
     /// - The client will accept ANY certificate, regardless of its validity
     /// - The client will accept expired certificates
     /// - The client will accept certificates from untrusted issuers
     /// - The client will accept certificates for the wrong domain
-    /// 
+    ///
     /// This method should ONLY be used for:
     /// - Local development with self-signed certificates
     /// - Testing environments where security is not a concern
     /// - Debugging TLS connection issues
-    /// 
+    ///
     /// # Implementation Details
-    /// 
+    ///
     /// When enabled, this setting:
     /// - For `native-tls`: Uses `danger_accept_invalid_certs(true)` on the TLS connector
     /// - For `rustls`: Implements a custom `ServerCertVerifier` that accepts all certificates
@@ -893,7 +1210,7 @@ mod tests {
     }
 
     #[cfg(not(target_arch = "wasm32"))]
-    #[tokio::test]  
+    #[tokio::test]
     async fn post_returns_ok_on_native() {
         let client = HttpClient::builder().build();
         // Just test that the method can be called - don't actually make network requests in tests
