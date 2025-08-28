@@ -1,12 +1,12 @@
 use axum::{
-    Router,
     extract::{Path, Query},
     response::Json,
     routing::{delete, get, post, put},
+    Router,
 };
 use hyper_custom_cert::HttpClient;
 use serde::{Deserialize, Serialize};
-use serde_json::{Value, json};
+use serde_json::{json, Value};
 use std::collections::HashMap;
 use std::time::Duration;
 

@@ -1,7 +1,7 @@
 [package]
 name = "hyper-custom-cert"
 version = "0.3.6"
-edition = "2024"
+edition = "2021"
 description = "A small, ergonomic HTTP client wrapper around hyper with optional support for custom Root CAs and a dev-only insecure mode for self-signed certificates."
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/seemueller-io/hyper-custom-cert"

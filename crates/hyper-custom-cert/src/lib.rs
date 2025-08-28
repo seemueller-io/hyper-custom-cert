@@ -37,7 +37,7 @@ use std::time::Duration;
 
 use bytes::Bytes;
 use http_body_util::BodyExt;
-use hyper::{Method, Request, Response, StatusCode, Uri, body::Incoming};
+use hyper::{body::Incoming, Method, Request, Response, StatusCode, Uri};
 use hyper_util::client::legacy::Client;
 use hyper_util::rt::TokioExecutor;
 
@@ -367,11 +367,11 @@ impl HttpClient {
         }
 
         // Add any request-specific headers from options
-        if let Some(options) = &options
-            && let Some(headers) = &options.headers
-        {
-            for (key, value) in headers {
-                req = req.header(key, value);
+        if let Some(options) = &options {
+            if let Some(headers) = &options.headers {
+                for (key, value) in headers {
+                    req = req.header(key, value);
+                }
             }
         }
 
@@ -503,11 +503,11 @@ impl HttpClient {
         }
 
         // Add any request-specific headers from options
-        if let Some(options) = &options
-            && let Some(headers) = &options.headers
-        {
-            for (key, value) in headers {
-                req = req.header(key, value);
+        if let Some(options) = &options {
+            if let Some(headers) = &options.headers {
+                for (key, value) in headers {
+                    req = req.header(key, value);
+                }
             }
         }
 
@@ -654,10 +654,10 @@ impl HttpClient {
                 // and NEVER in production environments. This creates a vulnerability to
                 // man-in-the-middle attacks and is extremely dangerous.
 
-                use rustls::DigitallySignedStruct;
-                use rustls::SignatureScheme;
                 use rustls::client::danger::{HandshakeSignatureValid, ServerCertVerified};
                 use rustls::pki_types::UnixTime;
+                use rustls::DigitallySignedStruct;
+                use rustls::SignatureScheme;
                 use std::sync::Arc;
 
                 // Override the certificate verifier with a no-op verifier that accepts all certificates
@@ -731,12 +731,12 @@ impl HttpClient {
             #[cfg(feature = "rustls")]
             let rustls_config = if let Some(ref pins) = self.pinned_cert_sha256 {
                 // Implement certificate pinning by creating a custom certificate verifier
-                use rustls::DigitallySignedStruct;
-                use rustls::SignatureScheme;
                 use rustls::client::danger::{
                     HandshakeSignatureValid, ServerCertVerified, ServerCertVerifier,
                 };
                 use rustls::pki_types::{CertificateDer, ServerName, UnixTime};
+                use rustls::DigitallySignedStruct;
+                use rustls::SignatureScheme;
                 use std::sync::Arc;
 
                 // Create a custom certificate verifier that checks certificate pins
