@@ -41,6 +41,60 @@ use hyper_util::client::legacy::Client;
 use hyper_util::rt::TokioExecutor;
 use http_body_util::BodyExt;
 
+/// Options for controlling HTTP requests.
+///
+/// This struct provides a flexible interface for configuring individual
+/// HTTP requests without modifying the client's default settings.
+///
+/// # Examples
+///
+/// Adding custom headers to a specific request:
+///
+/// ```
+/// use hyper_custom_cert::{HttpClient, RequestOptions};
+/// use std::collections::HashMap;
+///
+/// // Create request-specific headers
+/// let mut headers = HashMap::new();
+/// headers.insert("x-request-id".to_string(), "123456".to_string());
+///
+/// // Create request options with these headers
+/// let options = RequestOptions::new()
+///     .with_headers(headers);
+///
+/// // Make request with custom options
+/// # async {
+/// let client = HttpClient::new();
+/// let _response = client.request_with_options("https://example.com", Some(options)).await;
+/// # };
+/// ```
+#[derive(Default, Clone)]
+pub struct RequestOptions {
+    /// Headers to add to this specific request
+    pub headers: Option<HashMap<String, String>>,
+    /// Override the client's default timeout for this request
+    pub timeout: Option<Duration>,
+}
+
+impl RequestOptions {
+    /// Create a new empty RequestOptions with default values.
+    pub fn new() -> Self {
+        RequestOptions::default()
+    }
+    
+    /// Add custom headers to this request.
+    pub fn with_headers(mut self, headers: HashMap<String, String>) -> Self {
+        self.headers = Some(headers);
+        self
+    }
+    
+    /// Override the client's default timeout for this request.
+    pub fn with_timeout(mut self, timeout: Duration) -> Self {
+        self.timeout = Some(timeout);
+        self
+    }
+}
+
 /// HTTP response with raw body data exposed as bytes.
 #[derive(Debug, Clone)]
 pub struct HttpResponse {
@@ -131,7 +185,7 @@ impl From<hyper_util::client::legacy::Error> for ClientError {
 /// Build a client with a custom timeout and default headers:
 ///
 /// ```
-/// use hyper_custom_cert::HttpClient;
+/// use hyper_custom_cert::{HttpClient, RequestOptions};
 /// use std::time::Duration;
 /// use std::collections::HashMap;
 ///
@@ -144,7 +198,7 @@ impl From<hyper_util::client::legacy::Error> for ClientError {
 ///     .build();
 ///
 /// // Placeholder call; does not perform I/O in this crate.
-/// let _ = client.request("https://example.com");
+/// let _ = client.request_with_options("https://example.com", None);
 /// ```
 pub struct HttpClient {
     timeout: Duration,
@@ -234,7 +288,68 @@ impl HttpClient {
     /// This method constructs a `hyper::Request` with the GET method and any
     /// default headers configured on the client, then dispatches it via `perform_request`.
     /// Returns HttpResponse with raw body data exposed without any permutations.
+    ///
+    /// # Arguments
+    ///
+    /// * `url` - The URL to request
+    /// * `options` - Optional request options to customize this specific request
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # async {
+    /// use hyper_custom_cert::{HttpClient, RequestOptions};
+    /// use std::collections::HashMap;
+    /// 
+    /// let client = HttpClient::new();
+    /// 
+    /// // Basic request with no custom options
+    /// let response1 = client.request_with_options("https://example.com", None).await?;
+    /// 
+    /// // Request with custom options
+    /// let mut headers = HashMap::new();
+    /// headers.insert("x-request-id".into(), "abc123".into());
+    /// let options = RequestOptions::new().with_headers(headers);
+    /// let response2 = client.request_with_options("https://example.com", Some(options)).await?;
+    /// # Ok::<(), hyper_custom_cert::ClientError>(())
+    /// # };
+    /// ```
+    #[deprecated(since = "0.4.0", note = "Use request(url, Some(options)) instead")]
     pub async fn request(&self, url: &str) -> Result<HttpResponse, ClientError> {
+        self.request_with_options(url, None).await
+    }
+    
+    /// Performs a GET request and returns the raw response body.
+    /// This method constructs a `hyper::Request` with the GET method and any
+    /// default headers configured on the client, then dispatches it via `perform_request`.
+    /// Returns HttpResponse with raw body data exposed without any permutations.
+    ///
+    /// # Arguments
+    ///
+    /// * `url` - The URL to request
+    /// * `options` - Optional request options to customize this specific request
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # async {
+    /// use hyper_custom_cert::{HttpClient, RequestOptions};
+    /// use std::collections::HashMap;
+    /// 
+    /// let client = HttpClient::new();
+    /// 
+    /// // Basic request with no custom options
+    /// let response1 = client.request_with_options("https://example.com", None).await?;
+    /// 
+    /// // Request with custom options
+    /// let mut headers = HashMap::new();
+    /// headers.insert("x-request-id".into(), "abc123".into());
+    /// let options = RequestOptions::new().with_headers(headers);
+    /// let response2 = client.request_with_options("https://example.com", Some(options)).await?;
+    /// # Ok::<(), hyper_custom_cert::ClientError>(())
+    /// # };
+    /// ```
+    pub async fn request_with_options(&self, url: &str, options: Option<RequestOptions>) -> Result<HttpResponse, ClientError> {
         let uri: Uri = url.parse()?;
         
         let req = Request::builder()
@@ -249,9 +364,44 @@ impl HttpClient {
             req = req.header(key, value);
         }
         
+        // Add any request-specific headers from options
+        if let Some(options) = &options {
+            if let Some(headers) = &options.headers {
+                for (key, value) in headers {
+                    req = req.header(key, value);
+                }
+            }
+        }
+        
         let req = req.body(http_body_util::Empty::<Bytes>::new())?;
         
-        self.perform_request(req).await
+        // If options contain a timeout, temporarily modify self to use it
+        // This is a bit of a hack since we can't modify perform_request easily
+        let result = if let Some(opts) = &options {
+            if let Some(timeout) = opts.timeout {
+                // Create a copy of self with the new timeout
+                let client_copy = HttpClient {
+                    timeout,
+                    default_headers: self.default_headers.clone(),
+                    #[cfg(feature = "insecure-dangerous")]
+                    accept_invalid_certs: self.accept_invalid_certs,
+                    root_ca_pem: self.root_ca_pem.clone(),
+                    #[cfg(feature = "rustls")]
+                    pinned_cert_sha256: self.pinned_cert_sha256.clone(),
+                };
+                
+                // Use the modified client for this request only
+                client_copy.perform_request(req).await
+            } else {
+                // No timeout override, use normal client
+                self.perform_request(req).await
+            }
+        } else {
+            // No options, use normal client
+            self.perform_request(req).await
+        };
+        
+        result
     }
 
     /// Performs a POST request with the given body and returns the raw response.
@@ -259,7 +409,77 @@ impl HttpClient {
     /// operation, handles the request body conversion to `Bytes`, and applies
     /// default headers before calling `perform_request`.
     /// Returns HttpResponse with raw body data exposed without any permutations.
+    ///
+    /// # Arguments
+    ///
+    /// * `url` - The URL to request
+    /// * `body` - The body content to send with the POST request
+    /// * `options` - Optional request options to customize this specific request
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # async {
+    /// use hyper_custom_cert::{HttpClient, RequestOptions};
+    /// use std::collections::HashMap;
+    /// use std::time::Duration;
+    /// 
+    /// let client = HttpClient::new();
+    /// 
+    /// // Basic POST request with no custom options
+    /// let response1 = client.post_with_options("https://example.com/api", b"{\"key\":\"value\"}", None).await?;
+    /// 
+    /// // POST request with custom options
+    /// let mut headers = HashMap::new();
+    /// headers.insert("Content-Type".into(), "application/json".into());
+    /// let options = RequestOptions::new()
+    ///     .with_headers(headers)
+    ///     .with_timeout(Duration::from_secs(5));
+    /// let response2 = client.post_with_options("https://example.com/api", b"{\"key\":\"value\"}", Some(options)).await?;
+    /// # Ok::<(), hyper_custom_cert::ClientError>(())
+    /// # };
+    /// ```
+    #[deprecated(since = "0.4.0", note = "Use post_with_options(url, body, Some(options)) instead")]
     pub async fn post<B: AsRef<[u8]>>(&self, url: &str, body: B) -> Result<HttpResponse, ClientError> {
+        self.post_with_options(url, body, None).await
+    }
+    
+    /// Performs a POST request with the given body and returns the raw response.
+    /// Similar to `request`, this method builds a `hyper::Request` for a POST
+    /// operation, handles the request body conversion to `Bytes`, and applies
+    /// default headers before calling `perform_request`.
+    /// Returns HttpResponse with raw body data exposed without any permutations.
+    ///
+    /// # Arguments
+    ///
+    /// * `url` - The URL to request
+    /// * `body` - The body content to send with the POST request
+    /// * `options` - Optional request options to customize this specific request
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # async {
+    /// use hyper_custom_cert::{HttpClient, RequestOptions};
+    /// use std::collections::HashMap;
+    /// use std::time::Duration;
+    /// 
+    /// let client = HttpClient::new();
+    /// 
+    /// // Basic POST request with no custom options
+    /// let response1 = client.post_with_options("https://example.com/api", b"{\"key\":\"value\"}", None).await?;
+    /// 
+    /// // POST request with custom options
+    /// let mut headers = HashMap::new();
+    /// headers.insert("Content-Type".into(), "application/json".into());
+    /// let options = RequestOptions::new()
+    ///     .with_headers(headers)
+    ///     .with_timeout(Duration::from_secs(5));
+    /// let response2 = client.post_with_options("https://example.com/api", b"{\"key\":\"value\"}", Some(options)).await?;
+    /// # Ok::<(), hyper_custom_cert::ClientError>(())
+    /// # };
+    /// ```
+    pub async fn post_with_options<B: AsRef<[u8]>>(&self, url: &str, body: B, options: Option<RequestOptions>) -> Result<HttpResponse, ClientError> {
         let uri: Uri = url.parse()?;
         
         let req = Request::builder()
@@ -272,10 +492,45 @@ impl HttpClient {
             req = req.header(key, value);
         }
         
+        // Add any request-specific headers from options
+        if let Some(options) = &options {
+            if let Some(headers) = &options.headers {
+                for (key, value) in headers {
+                    req = req.header(key, value);
+                }
+            }
+        }
+        
         let body_bytes = Bytes::copy_from_slice(body.as_ref());
         let req = req.body(http_body_util::Full::new(body_bytes))?;
         
-        self.perform_request(req).await
+        // If options contain a timeout, temporarily modify self to use it
+        // This is a bit of a hack since we can't modify perform_request easily
+        let result = if let Some(opts) = &options {
+            if let Some(timeout) = opts.timeout {
+                // Create a copy of self with the new timeout
+                let client_copy = HttpClient {
+                    timeout,
+                    default_headers: self.default_headers.clone(),
+                    #[cfg(feature = "insecure-dangerous")]
+                    accept_invalid_certs: self.accept_invalid_certs,
+                    root_ca_pem: self.root_ca_pem.clone(),
+                    #[cfg(feature = "rustls")]
+                    pinned_cert_sha256: self.pinned_cert_sha256.clone(),
+                };
+                
+                // Use the modified client for this request only
+                client_copy.perform_request(req).await
+            } else {
+                // No timeout override, use normal client
+                self.perform_request(req).await
+            }
+        } else {
+            // No options, use normal client
+            self.perform_request(req).await
+        };
+        
+        result
     }
 
     /// Helper method to perform HTTP requests using the configured settings.
@@ -610,12 +865,26 @@ impl HttpClient {
     /// On wasm32 targets, runtime methods are stubbed and return
     /// `ClientError::WasmNotImplemented` because browsers do not allow
     /// programmatic installation/trust of custom CAs.
+    #[deprecated(since = "0.4.0", note = "Use request_with_options(url, Some(options)) instead")]
     pub fn request(&self, _url: &str) -> Result<(), ClientError> {
+        Err(ClientError::WasmNotImplemented)
+    }
+    
+    /// On wasm32 targets, runtime methods are stubbed and return
+    /// `ClientError::WasmNotImplemented` because browsers do not allow
+    /// programmatic installation/trust of custom CAs.
+    pub fn request_with_options(&self, _url: &str, _options: Option<RequestOptions>) -> Result<(), ClientError> {
         Err(ClientError::WasmNotImplemented)
     }
 
     /// POST is also not implemented on wasm32 targets for the same reason.
+    #[deprecated(since = "0.4.0", note = "Use post_with_options(url, body, Some(options)) instead")]
     pub fn post<B: AsRef<[u8]>>(&self, _url: &str, _body: B) -> Result<(), ClientError> {
+        Err(ClientError::WasmNotImplemented)
+    }
+    
+    /// POST is also not implemented on wasm32 targets for the same reason.
+    pub fn post_with_options<B: AsRef<[u8]>>(&self, _url: &str, _body: B, _options: Option<RequestOptions>) -> Result<(), ClientError> {
         Err(ClientError::WasmNotImplemented)
     }
 }

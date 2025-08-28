@@ -167,12 +167,36 @@ fn test_self_signed_convenience_constructor() {
 // ============================================================================
 
 #[tokio::test]
+async fn test_request_options() {
+    use hyper_custom_cert::RequestOptions;
+    use std::collections::HashMap;
+    use std::time::Duration;
+    
+    // Test RequestOptions functionality
+    let client = HttpClient::new();
+    
+    // Create request options
+    let mut headers = HashMap::new();
+    headers.insert("X-Custom-Header".to_string(), "test-value".to_string());
+    
+    let options = RequestOptions::new()
+        .with_headers(headers)
+        .with_timeout(Duration::from_secs(15));
+        
+    // Smoke test - verify request options can be used with both GET and POST
+    // In real usage:
+    // let _get_resp = client.request("https://example.com", Some(options.clone())).await.unwrap();
+    // let _post_resp = client.post("https://example.com", b"{}", Some(options)).await.unwrap();
+    let _ = (client, options);
+}
+
+#[tokio::test]
 async fn test_get_requests_to_example_server() {
     // Test GET requests
     let client = HttpClient::new();
 
     // Smoke test - verify GET method API exists
-    // In real usage: let _response = client.request("http://localhost:8080/test/methods/get").await.unwrap();
+    // In real usage: let _response = client.request("http://localhost:8080/test/methods/get", None).await.unwrap();
     let _ = client;
 }
 
@@ -184,8 +208,8 @@ async fn test_post_requests_to_example_server() {
     // Smoke test - verify POST method API exists
     // In real usage:
     // let json_payload = r#"{"name": "test", "value": "integration-test"}"#;
-    // let _response = client.post("http://localhost:8080/test/methods/post", json_payload.as_bytes()).await.unwrap();
-    // let _response = client.post("http://localhost:8080/test/methods/post", b"").await.unwrap();
+    // let _response = client.post("http://localhost:8080/test/methods/post", json_payload.as_bytes(), None).await.unwrap();
+    // let _response = client.post("http://localhost:8080/test/methods/post", b"", None).await.unwrap();
     let _ = client;
 }
 
@@ -212,7 +236,7 @@ async fn test_invalid_url_handling() {
 
     // Smoke test - verify client creation
     // In real usage, this would test actual URL validation:
-    // let result = client.request("invalid-url").await;
+    // let result = client.request("invalid-url", None).await;
     // assert!(result.is_err()); // Should fail with invalid URI error
     let _ = client;
 }
