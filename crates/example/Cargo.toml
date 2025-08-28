@@ -3,6 +3,14 @@ name = "example"
 version = "0.1.0"
 edition = "2024"
 
+[features]
+# No-op features used only by the example to allow conditional compilation in docs/examples.
+# They are intentionally empty — the example file uses these cfg names to show feature-specific examples.
+native-tls = []
+rustls = []
+insecure-dangerous = []
+
+
 [dependencies]
 tokio = { version = "1.47.1", features = ["macros", "rt-multi-thread"] }
 axum = "0.8.4"

@@ -143,7 +143,7 @@ async fn api_overview() -> Json<Value> {
 /// Test default HttpClient creation
 async fn test_default_client() -> Json<TestResponse> {
     let client = HttpClient::new();
-    let result = client.request("https://httpbin.org/get");
+    let result = client.request("https://httpbin.org/get").await;
     
     Json(TestResponse {
         endpoint: "/test/client/default".to_string(),
@@ -160,7 +160,7 @@ async fn test_default_client() -> Json<TestResponse> {
 /// Test HttpClient builder pattern
 async fn test_builder_client() -> Json<TestResponse> {
     let client = HttpClient::builder().build();
-    let result = client.request("https://httpbin.org/get");
+    let result = client.request("https://httpbin.org/get").await;
     
     Json(TestResponse {
         endpoint: "/test/client/builder".to_string(),
@@ -180,7 +180,7 @@ async fn test_timeout_client(Query(params): Query<TimeoutQuery>) -> Json<TestRes
     let client = HttpClient::builder()
         .with_timeout(Duration::from_secs(timeout_secs))
         .build();
-    let result = client.request("https://httpbin.org/get");
+    let result = client.request("https://httpbin.org/get").await;
     
     Json(TestResponse {
         endpoint: "/test/client/timeout".to_string(),
@@ -204,7 +204,7 @@ async fn test_headers_client() -> Json<TestResponse> {
     let client = HttpClient::builder()
         .with_default_headers(headers)
         .build();
-    let result = client.request("https://httpbin.org/get");
+    let result = client.request("https://httpbin.org/get").await;
     
     Json(TestResponse {
         endpoint: "/test/client/headers".to_string(),
@@ -228,7 +228,7 @@ async fn test_combined_config() -> Json<TestResponse> {
         .with_timeout(Duration::from_secs(30))
         .with_default_headers(headers)
         .build();
-    let result = client.request("https://httpbin.org/get");
+    let result = client.request("https://httpbin.org/get").await;
     
     Json(TestResponse {
         endpoint: "/test/client/combined".to_string(),
@@ -253,7 +253,7 @@ async fn test_native_tls_feature() -> Json<TestResponse> {
         let client = HttpClient::builder()
             .with_timeout(Duration::from_secs(10))
             .build();
-        let result = client.request("https://httpbin.org/get");
+        let result = client.request("https://httpbin.org/get").await;
         
         Json(TestResponse {
             endpoint: "/test/features/native-tls".to_string(),
@@ -289,7 +289,7 @@ async fn test_rustls_feature() -> Json<TestResponse> {
             .with_timeout(Duration::from_secs(10))
             .with_root_ca_pem(ca_pem)
             .build();
-        let result = client.request("https://httpbin.org/get");
+        let result = client.request("https://httpbin.org/get").await;
         
         Json(TestResponse {
             endpoint: "/test/features/rustls".to_string(),
@@ -320,13 +320,13 @@ async fn test_insecure_feature() -> Json<TestResponse> {
     {
         // Test shortcut method
         let client = HttpClient::with_self_signed_certs();
-        let result = client.request("https://self-signed.badssl.com/");
+        let result = client.request("https://self-signed.badssl.com/").await;
         
         // Test builder method
         let client2 = HttpClient::builder()
             .insecure_accept_invalid_certs(true)
             .build();
-        let result2 = client2.request("https://expired.badssl.com/");
+        let result2 = client2.request("https://expired.badssl.com/").await;
         
         Json(TestResponse {
             endpoint: "/test/features/insecure".to_string(),
@@ -359,7 +359,7 @@ async fn test_insecure_feature() -> Json<TestResponse> {
 /// Test HTTP GET method
 async fn test_get_method() -> Json<TestResponse> {
     let client = HttpClient::new();
-    let result = client.request("https://httpbin.org/get");
+    let result = client.request("https://httpbin.org/get").await;
     
     Json(TestResponse {
         endpoint: "/test/methods/get".to_string(),
@@ -377,7 +377,7 @@ async fn test_get_method() -> Json<TestResponse> {
 async fn test_post_method(Json(payload): Json<PostData>) -> Json<TestResponse> {
     let client = HttpClient::new();
     let body = serde_json::to_vec(&payload).unwrap_or_default();
-    let result = client.post("https://httpbin.org/post", &body);
+    let result = client.post("https://httpbin.org/post", &body).await;
     
     Json(TestResponse {
         endpoint: "/test/methods/post".to_string(),
@@ -395,7 +395,7 @@ async fn test_post_method(Json(payload): Json<PostData>) -> Json<TestResponse> {
 async fn test_put_method(Json(payload): Json<PostData>) -> Json<TestResponse> {
     let client = HttpClient::new();
     let body = serde_json::to_vec(&payload).unwrap_or_default();
-    let result = client.post("https://httpbin.org/put", &body);
+    let result = client.post("https://httpbin.org/put", &body).await;
     
     Json(TestResponse {
         endpoint: "/test/methods/put".to_string(),
@@ -412,7 +412,7 @@ async fn test_put_method(Json(payload): Json<PostData>) -> Json<TestResponse> {
 /// Test HTTP DELETE method (simulated via GET since library doesn't have DELETE yet)
 async fn test_delete_method() -> Json<TestResponse> {
     let client = HttpClient::new();
-    let result = client.request("https://httpbin.org/delete");
+    let result = client.request("https://httpbin.org/delete").await;
     
     Json(TestResponse {
         endpoint: "/test/methods/delete".to_string(),
@@ -441,13 +441,15 @@ async fn test_custom_ca() -> Json<TestResponse> {
             .with_root_ca_pem(ca_pem)
             .build();
         let result = client.request("https://httpbin.org/get");
+
+        let awaited = result.await;
         
         Json(TestResponse {
             endpoint: "/test/tls/custom-ca".to_string(),
             status: "success".to_string(),
             message: "Custom CA certificate test completed successfully".to_string(),
             features_tested: vec!["rustls".to_string(), "custom-ca-pem".to_string()],
-            error: match result {
+            error: match awaited {
                 Ok(_) => None,
                 Err(e) => Some(format!("Custom CA request error: {}", e)),
             },
@@ -482,13 +484,15 @@ async fn test_cert_pinning() -> Json<TestResponse> {
             .with_pinned_cert_sha256(pins)
             .build();
         let result = client.request("https://httpbin.org/get");
+
+        let awaited = result.await;
         
         Json(TestResponse {
             endpoint: "/test/tls/cert-pinning".to_string(),
             status: "success".to_string(),
             message: "Certificate pinning test completed (may fail due to demo pins)".to_string(),
             features_tested: vec!["rustls".to_string(), "cert-pinning".to_string()],
-            error: match result {
+            error: match awaited {
                 Ok(_) => None,
                 Err(e) => Some(format!("Cert pinning request error (expected): {}", e)),
             },
@@ -512,13 +516,15 @@ async fn test_self_signed() -> Json<TestResponse> {
     {
         let client = HttpClient::with_self_signed_certs();
         let result = client.request("https://self-signed.badssl.com/");
+
+        let awaited = result.await;
         
         Json(TestResponse {
             endpoint: "/test/tls/self-signed".to_string(),
             status: "success".to_string(),
             message: "Self-signed certificate test completed (DANGEROUS - dev only!)".to_string(),
             features_tested: vec!["insecure-dangerous".to_string()],
-            error: match result {
+            error: match awaited {
                 Ok(_) => None,
                 Err(e) => Some(format!("Self-signed request error: {}", e)),
             },
@@ -553,7 +559,7 @@ async fn test_custom_timeout(Path(seconds): Path<u64>) -> Json<TestResponse> {
         status: "success".to_string(),
         message: format!("Custom timeout test with {}s timeout completed", seconds),
         features_tested: vec!["custom-timeout".to_string()],
-        error: match result {
+        error: match result.await {
             Ok(_) => None,
             Err(e) => Some(format!("Timeout test error: {}", e)),
         },
@@ -586,7 +592,7 @@ async fn test_custom_headers(Path(header_count): Path<usize>) -> Json<TestRespon
         status: "success".to_string(),
         message: format!("Custom headers test with {} headers completed", header_count + 2),
         features_tested: vec!["custom-headers".to_string()],
-        error: match result {
+        error: match result.await {
             Ok(_) => None,
             Err(e) => Some(format!("Headers test error: {}", e)),
         },
@@ -604,13 +610,14 @@ async fn test_timeout_error() -> Json<TestResponse> {
         .with_timeout(Duration::from_millis(1))
         .build();
     let result = client.request("https://httpbin.org/delay/5");
-    
+
+    let awaited = result.await;
     Json(TestResponse {
         endpoint: "/test/errors/timeout".to_string(),
-        status: if result.is_err() { "success" } else { "unexpected" }.to_string(),
+        status: if awaited.is_err() { "success" } else { "unexpected" }.to_string(),
         message: "Timeout error simulation test completed".to_string(),
         features_tested: vec!["timeout-error-handling".to_string()],
-        error: match result {
+        error: match awaited {
             Ok(_) => Some("Expected timeout error but request succeeded".to_string()),
             Err(e) => Some(format!("Expected timeout error: {}", e)),
         },
@@ -621,13 +628,15 @@ async fn test_timeout_error() -> Json<TestResponse> {
 async fn test_invalid_url() -> Json<TestResponse> {
     let client = HttpClient::new();
     let result = client.request("invalid-url-format");
-    
+
+    let awaited = result.await;
+
     Json(TestResponse {
         endpoint: "/test/errors/invalid-url".to_string(),
-        status: if result.is_err() { "success" } else { "unexpected" }.to_string(),
+        status: if awaited.is_err() { "success" } else { "unexpected" }.to_string(),
         message: "Invalid URL error simulation test completed".to_string(),
         features_tested: vec!["url-validation".to_string()],
-        error: match result {
+        error: match awaited {
             Ok(_) => Some("Expected URL error but request succeeded".to_string()),
             Err(e) => Some(format!("Expected URL error: {}", e)),
         },
@@ -641,13 +650,14 @@ async fn test_connection_error() -> Json<TestResponse> {
         .build();
     // Try to connect to a non-existent host
     let result = client.request("https://non-existent-host-12345.example.com/");
-    
+    let awaited = result.await;
+
     Json(TestResponse {
         endpoint: "/test/errors/connection".to_string(),
-        status: if result.is_err() { "success" } else { "unexpected" }.to_string(),
+        status: if awaited.is_err() { "success" } else { "unexpected" }.to_string(),
         message: "Connection error simulation test completed".to_string(),
         features_tested: vec!["connection-error-handling".to_string()],
-        error: match result {
+        error: match awaited {
             Ok(_) => Some("Expected connection error but request succeeded".to_string()),
             Err(e) => Some(format!("Expected connection error: {}", e)),
         },
@@ -683,7 +693,7 @@ async fn status_check() -> Json<Value> {
         .as_secs();
     
     // Test basic client creation to verify library is working
-    let client_test = match HttpClient::new().request("https://httpbin.org/get") {
+    let client_test = match HttpClient::new().request("https://httpbin.org/get").await {
         Ok(_) => "operational",
         Err(_) => "degraded"
     };

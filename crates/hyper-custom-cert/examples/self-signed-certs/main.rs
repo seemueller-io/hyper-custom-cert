@@ -2,7 +2,8 @@ use hyper_custom_cert::HttpClient;
 use std::collections::HashMap;
 use std::time::Duration;
 
-fn main() {
+#[tokio::main]
+async fn main() {
     // Default secure client (uses OS trust store when built with default features)
     let mut headers = HashMap::new();
     headers.insert("x-app".into(), "example".into());
@@ -12,9 +13,10 @@ fn main() {
         .with_default_headers(headers)
         .build();
 
-    // Demonstrate a request (no network I/O in this example crate yet)
-    client
+    // Demonstrate a request (now returns HttpResponse with raw body data)
+    let _response = client
         .request("https://example.com")
+        .await
         .expect("request should succeed on native targets");
 
     // Production with rustls + custom Root CA (e.g., self-signed for your private service)
@@ -28,7 +30,7 @@ fn main() {
             .with_timeout(Duration::from_secs(10))
             .with_root_ca_pem(ca_pem)
             .build();
-        let _ = _rustls_client.request("https://private.local");
+        let _ = _rustls_client.request("https://private.local").await;
 
         // Option 2: Load CA certificate from a file path
         // Note: This will panic if the file doesn't exist - ensure your cert file is available
@@ -45,13 +47,13 @@ fn main() {
     {
         // Shortcut:
         let _dev_client = HttpClient::with_self_signed_certs();
-        let _ = _dev_client.request("https://localhost:8443");
+        let _ = _dev_client.request("https://localhost:8443").await;
 
         // Or explicit builder method:
         let _dev_client2 = HttpClient::builder()
             .insecure_accept_invalid_certs(true)
             .build();
-        let _ = _dev_client2.request("https://localhost:8443");
+        let _ = _dev_client2.request("https://localhost:8443").await;
     }
 
     println!("Example finished. See README for feature flags and commands.");

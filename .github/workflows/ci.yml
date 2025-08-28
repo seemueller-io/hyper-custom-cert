@@ -6,30 +6,8 @@ on:
 
 jobs:
   build:
-    name: build-and-test (${{ matrix.name }})
+    name: build-and-test (test-all.sh)
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: crates/hyper-custom-cert
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - name: default (native-tls)
-            features: ""
-            no-default-features: false
-          - name: no-default-features (no TLS)
-            features: ""
-            no-default-features: true
-          - name: rustls
-            features: "rustls"
-            no-default-features: true
-          - name: insecure-dangerous (native-tls)
-            features: "insecure-dangerous"
-            no-default-features: false
-          - name: rustls + insecure-dangerous
-            features: "rustls,insecure-dangerous"
-            no-default-features: true
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -53,25 +31,12 @@ jobs:
       - name: Cargo fmt (check)
         run: cargo fmt --all -- --check
 
-      - name: Clippy
-        shell: bash
-        run: |
-          FLAGS=""
-          if [ "${{ matrix.no-default-features }}" = "true" ]; then FLAGS="$FLAGS --no-default-features"; fi
-          if [ -n "${{ matrix.features }}" ]; then FLAGS="$FLAGS --features ${{ matrix.features }}"; fi
-          echo "Running: cargo clippy --all-targets $FLAGS -- -D warnings"
-          cargo clippy --all-targets $FLAGS -- -D warnings
+      - name: Clippy (default)
+        run: cargo clippy --all-targets -- -D warnings
 
-      - name: Tests
-        shell: bash
-        run: |
-          FLAGS=""
-          if [ "${{ matrix.no-default-features }}" = "true" ]; then FLAGS="$FLAGS --no-default-features"; fi
-          if [ -n "${{ matrix.features }}" ]; then FLAGS="$FLAGS --features ${{ matrix.features }}"; fi
-          echo "Running: cargo test $FLAGS -- --nocapture"
-          cargo test $FLAGS -- --nocapture
+      - name: Ensure test-all.sh is executable
+        run: chmod +x ./scripts/test-all.sh
 
-      - name: Build Docs
+      - name: Run comprehensive test suite
         shell: bash
-        run: | 
-          cargo doc -p hyper-custom-cert --no-deps 
+        run: ./scripts/test-all.sh

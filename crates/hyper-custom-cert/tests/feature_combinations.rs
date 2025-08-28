@@ -8,6 +8,7 @@ use hyper_custom_cert::HttpClient;
 #[cfg(any(
     all(feature = "rustls", feature = "insecure-dangerous"),
     all(feature = "native-tls", feature = "insecure-dangerous"),
+    feature = "insecure-dangerous",
     not(any(feature = "rustls", feature = "insecure-dangerous")),
     all(
         feature = "native-tls",

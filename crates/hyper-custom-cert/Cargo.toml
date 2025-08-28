@@ -16,10 +16,18 @@ name = "hyper_custom_cert"
 path = "src/lib.rs"
 
 [dependencies]
+hyper = { version = "1.0", features = ["client", "http1", "http2"] }
+hyper-util = { version = "0.1", features = ["client", "client-legacy", "http1", "http2", "tokio"] }
+http-body-util = "0.1"
+tokio = { version = "1.0", features = ["rt", "rt-multi-thread", "macros"] }
+bytes = "1.0"
 hyper-tls = { version = "0.6", optional = true }
 native-tls = { version = "0.2", optional = true }
+tokio-native-tls = { version = "0.3", optional = true }
 hyper-rustls = { version = "0.27", optional = true }
+rustls = { version = "0.23.31", optional = true }
 rustls-pemfile = { version = "2", optional = true }
+rustls-native-certs = { version = "0.8", optional = true }
 
 [features]
 # TLS backend selection and safety controls
@@ -27,11 +35,11 @@ rustls-pemfile = { version = "2", optional = true }
 default = ["native-tls"]
 
 # Use the operating system's native trust store via hyper-tls/native-tls
-native-tls = ["dep:hyper-tls", "dep:native-tls"]
+native-tls = ["dep:hyper-tls", "dep:native-tls", "dep:tokio-native-tls"]
 
 # Use rustls with the ability to add a custom Root CA via with_root_ca_pem
 # Recommended for securely connecting to services with a custom CA
-rustls = ["dep:hyper-rustls", "dep:rustls-pemfile"]
+rustls = ["dep:hyper-rustls", "dep:rustls", "dep:rustls-pemfile", "dep:rustls-native-certs"]
 
 # Extremely dangerous: only for local development/testing. Never use in production.
 # Unlocks builder methods to accept invalid/self-signed certs.
