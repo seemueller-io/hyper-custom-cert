@@ -368,7 +368,8 @@ impl HttpClient {
 
         // Add any request-specific headers from options
         if let Some(options) = &options
-            && let Some(headers) = &options.headers {
+            && let Some(headers) = &options.headers
+        {
             for (key, value) in headers {
                 req = req.header(key, value);
             }
@@ -503,7 +504,8 @@ impl HttpClient {
 
         // Add any request-specific headers from options
         if let Some(options) = &options
-            && let Some(headers) = &options.headers {
+            && let Some(headers) = &options.headers
+        {
             for (key, value) in headers {
                 req = req.header(key, value);
             }

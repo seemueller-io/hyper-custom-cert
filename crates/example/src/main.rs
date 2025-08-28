@@ -139,7 +139,9 @@ async fn api_overview() -> Json<Value> {
 /// Test default HttpClient creation
 async fn test_default_client() -> Json<TestResponse> {
     let client = HttpClient::new();
-    let result = client.request_with_options("https://httpbin.org/get", None).await;
+    let result = client
+        .request_with_options("https://httpbin.org/get", None)
+        .await;
 
     Json(TestResponse {
         endpoint: "/test/client/default".to_string(),
@@ -156,7 +158,9 @@ async fn test_default_client() -> Json<TestResponse> {
 /// Test HttpClient builder pattern
 async fn test_builder_client() -> Json<TestResponse> {
     let client = HttpClient::builder().build();
-    let result = client.request_with_options("https://httpbin.org/get", None).await;
+    let result = client
+        .request_with_options("https://httpbin.org/get", None)
+        .await;
 
     Json(TestResponse {
         endpoint: "/test/client/builder".to_string(),
@@ -176,7 +180,9 @@ async fn test_timeout_client(Query(params): Query<TimeoutQuery>) -> Json<TestRes
     let client = HttpClient::builder()
         .with_timeout(Duration::from_secs(timeout_secs))
         .build();
-    let result = client.request_with_options("https://httpbin.org/get", None).await;
+    let result = client
+        .request_with_options("https://httpbin.org/get", None)
+        .await;
 
     Json(TestResponse {
         endpoint: "/test/client/timeout".to_string(),
@@ -204,7 +210,9 @@ async fn test_headers_client() -> Json<TestResponse> {
     headers.insert("Accept".to_string(), "application/json".to_string());
 
     let client = HttpClient::builder().with_default_headers(headers).build();
-    let result = client.request_with_options("https://httpbin.org/get", None).await;
+    let result = client
+        .request_with_options("https://httpbin.org/get", None)
+        .await;
 
     Json(TestResponse {
         endpoint: "/test/client/headers".to_string(),
@@ -231,7 +239,9 @@ async fn test_combined_config() -> Json<TestResponse> {
         .with_timeout(Duration::from_secs(30))
         .with_default_headers(headers)
         .build();
-    let result = client.request_with_options("https://httpbin.org/get", None).await;
+    let result = client
+        .request_with_options("https://httpbin.org/get", None)
+        .await;
 
     Json(TestResponse {
         endpoint: "/test/client/combined".to_string(),
@@ -365,7 +375,9 @@ async fn test_insecure_feature() -> Json<TestResponse> {
 /// Test HTTP GET method
 async fn test_get_method() -> Json<TestResponse> {
     let client = HttpClient::new();
-    let result = client.request_with_options("https://httpbin.org/get", None).await;
+    let result = client
+        .request_with_options("https://httpbin.org/get", None)
+        .await;
 
     Json(TestResponse {
         endpoint: "/test/methods/get".to_string(),
@@ -383,7 +395,9 @@ async fn test_get_method() -> Json<TestResponse> {
 async fn test_post_method(Json(payload): Json<PostData>) -> Json<TestResponse> {
     let client = HttpClient::new();
     let body = serde_json::to_vec(&payload).unwrap_or_default();
-    let result = client.post_with_options("https://httpbin.org/post", &body, None).await;
+    let result = client
+        .post_with_options("https://httpbin.org/post", &body, None)
+        .await;
 
     Json(TestResponse {
         endpoint: "/test/methods/post".to_string(),
@@ -404,7 +418,9 @@ async fn test_post_method(Json(payload): Json<PostData>) -> Json<TestResponse> {
 async fn test_put_method(Json(payload): Json<PostData>) -> Json<TestResponse> {
     let client = HttpClient::new();
     let body = serde_json::to_vec(&payload).unwrap_or_default();
-    let result = client.post_with_options("https://httpbin.org/put", &body, None).await;
+    let result = client
+        .post_with_options("https://httpbin.org/put", &body, None)
+        .await;
 
     Json(TestResponse {
         endpoint: "/test/methods/put".to_string(),
@@ -424,7 +440,9 @@ async fn test_put_method(Json(payload): Json<PostData>) -> Json<TestResponse> {
 /// Test HTTP DELETE method (simulated via GET since library doesn't have DELETE yet)
 async fn test_delete_method() -> Json<TestResponse> {
     let client = HttpClient::new();
-    let result = client.request_with_options("https://httpbin.org/delete", None).await;
+    let result = client
+        .request_with_options("https://httpbin.org/delete", None)
+        .await;
 
     Json(TestResponse {
         endpoint: "/test/methods/delete".to_string(),
@@ -721,7 +739,10 @@ async fn status_check() -> Json<Value> {
         .as_secs();
 
     // Test basic client creation to verify library is working
-    let client_test = match HttpClient::new().request_with_options("https://httpbin.org/get", None).await {
+    let client_test = match HttpClient::new()
+        .request_with_options("https://httpbin.org/get", None)
+        .await
+    {
         Ok(_) => "operational",
         Err(_) => "degraded",
     };

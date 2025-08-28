@@ -30,7 +30,9 @@ async fn main() {
             .with_timeout(Duration::from_secs(10))
             .with_root_ca_pem(ca_pem)
             .build();
-        let _ = _rustls_client.request_with_options("https://private.local", None).await;
+        let _ = _rustls_client
+            .request_with_options("https://private.local", None)
+            .await;
 
         // Option 2: Load CA certificate from a file path
         // Note: This will panic if the file doesn't exist - ensure your cert file is available
@@ -47,13 +49,17 @@ async fn main() {
     {
         // Shortcut:
         let _dev_client = HttpClient::with_self_signed_certs();
-        let _ = _dev_client.request_with_options("https://localhost:8443", None).await;
+        let _ = _dev_client
+            .request_with_options("https://localhost:8443", None)
+            .await;
 
         // Or explicit builder method:
         let _dev_client2 = HttpClient::builder()
             .insecure_accept_invalid_certs(true)
             .build();
-        let _ = _dev_client2.request_with_options("https://localhost:8443", None).await;
+        let _ = _dev_client2
+            .request_with_options("https://localhost:8443", None)
+            .await;
     }
 
     println!("Example finished. See README for feature flags and commands.");
