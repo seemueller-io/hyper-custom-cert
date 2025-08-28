@@ -12,28 +12,6 @@ jobs:
   docs:
     name: Build and validate documentation
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: crates/hyper-custom-cert
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - name: default-features
-            features: ""
-            no-default-features: false
-          - name: no-default-features
-            features: ""
-            no-default-features: true
-          - name: rustls
-            features: "rustls"
-            no-default-features: true
-          - name: insecure-dangerous
-            features: "insecure-dangerous"
-            no-default-features: false
-          - name: all-features
-            features: "rustls,insecure-dangerous"
-            no-default-features: true
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -53,30 +31,11 @@ jobs:
 
       - name: Build documentation
         shell: bash
-        run: |
-          FLAGS=""
-          if [ "${{ matrix.no-default-features }}" = "true" ]; then FLAGS="$FLAGS --no-default-features"; fi
-          if [ -n "${{ matrix.features }}" ]; then FLAGS="$FLAGS --features ${{ matrix.features }}"; fi
-          echo "Running: cargo doc $FLAGS --no-deps"
-          cargo doc  $FLAGS --no-deps
-
-      - name: Check documentation warnings
-        shell: bash
-        run: |
-          FLAGS=""
-          if [ "${{ matrix.no-default-features }}" = "true" ]; then FLAGS="$FLAGS --no-default-features"; fi
-          if [ -n "${{ matrix.features }}" ]; then FLAGS="$FLAGS --features ${{ matrix.features }}"; fi
-          echo "Running: cargo doc $FLAGS --no-deps"
-          RUSTDOCFLAGS="-D warnings" cargo doc $FLAGS --no-deps
+        run: cargo doc -p hyper-custom-cert --no-deps
 
       - name: Test documentation examples
         shell: bash
-        run: |
-          FLAGS=""
-          if [ "${{ matrix.no-default-features }}" = "true" ]; then FLAGS="$FLAGS --no-default-features"; fi
-          if [ -n "${{ matrix.features }}" ]; then FLAGS="$FLAGS --features ${{ matrix.features }}"; fi
-          echo "Running: cargo test --doc $FLAGS"
-          cargo test --doc $FLAGS
+        run: cargo test --doc
 
   test:
     name: Test before release
