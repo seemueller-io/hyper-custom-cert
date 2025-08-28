@@ -8,28 +8,8 @@ jobs:
   build:
     name: build-and-test (${{ matrix.name }})
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: crates/hyper-custom-cert
     strategy:
       fail-fast: false
-      matrix:
-        include:
-          - name: default (native-tls)
-            features: ""
-            no-default-features: false
-          - name: no-default-features (no TLS)
-            features: ""
-            no-default-features: true
-          - name: rustls
-            features: "rustls"
-            no-default-features: true
-          - name: insecure-dangerous (native-tls)
-            features: "insecure-dangerous"
-            no-default-features: false
-          - name: rustls + insecure-dangerous
-            features: "rustls,insecure-dangerous"
-            no-default-features: true
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -55,21 +35,11 @@ jobs:
 
       - name: Clippy
         shell: bash
-        run: |
-          FLAGS=""
-          if [ "${{ matrix.no-default-features }}" = "true" ]; then FLAGS="$FLAGS --no-default-features"; fi
-          if [ -n "${{ matrix.features }}" ]; then FLAGS="$FLAGS --features ${{ matrix.features }}"; fi
-          echo "Running: cargo clippy --all-targets $FLAGS -- -D warnings"
-          cargo clippy --all-targets $FLAGS -- -D warnings
+        run: cargo clippy --all-targets
 
       - name: Tests
         shell: bash
-        run: |
-          FLAGS=""
-          if [ "${{ matrix.no-default-features }}" = "true" ]; then FLAGS="$FLAGS --no-default-features"; fi
-          if [ -n "${{ matrix.features }}" ]; then FLAGS="$FLAGS --features ${{ matrix.features }}"; fi
-          echo "Running: cargo test $FLAGS -- --nocapture"
-          cargo test $FLAGS -- --nocapture
+        run: cargo test --all-features
 
       - name: Build Docs
         shell: bash
