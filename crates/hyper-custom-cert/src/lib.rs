@@ -367,11 +367,10 @@ impl HttpClient {
         }
 
         // Add any request-specific headers from options
-        if let Some(options) = &options {
-            if let Some(headers) = &options.headers {
-                for (key, value) in headers {
-                    req = req.header(key, value);
-                }
+        if let Some(options) = &options
+            && let Some(headers) = &options.headers {
+            for (key, value) in headers {
+                req = req.header(key, value);
             }
         }
 
@@ -379,7 +378,7 @@ impl HttpClient {
 
         // If options contain a timeout, temporarily modify self to use it
         // This is a bit of a hack since we can't modify perform_request easily
-        let result = if let Some(opts) = &options {
+        if let Some(opts) = &options {
             if let Some(timeout) = opts.timeout {
                 // Create a copy of self with the new timeout
                 let client_copy = HttpClient {
@@ -401,9 +400,7 @@ impl HttpClient {
         } else {
             // No options, use normal client
             self.perform_request(req).await
-        };
-
-        result
+        }
     }
 
     /// Performs a POST request with the given body and returns the raw response.
@@ -505,11 +502,10 @@ impl HttpClient {
         }
 
         // Add any request-specific headers from options
-        if let Some(options) = &options {
-            if let Some(headers) = &options.headers {
-                for (key, value) in headers {
-                    req = req.header(key, value);
-                }
+        if let Some(options) = &options
+            && let Some(headers) = &options.headers {
+            for (key, value) in headers {
+                req = req.header(key, value);
             }
         }
 
@@ -518,7 +514,7 @@ impl HttpClient {
 
         // If options contain a timeout, temporarily modify self to use it
         // This is a bit of a hack since we can't modify perform_request easily
-        let result = if let Some(opts) = &options {
+        if let Some(opts) = &options {
             if let Some(timeout) = opts.timeout {
                 // Create a copy of self with the new timeout
                 let client_copy = HttpClient {
@@ -540,9 +536,7 @@ impl HttpClient {
         } else {
             // No options, use normal client
             self.perform_request(req).await
-        };
-
-        result
+        }
     }
 
     /// Helper method to perform HTTP requests using the configured settings.
