@@ -97,7 +97,6 @@ fn default_client_static_method() {
     let _client = HttpClient::default();
 }
 
-
 #[tokio::test]
 async fn post_smoke_default() {
     // Smoke test for POST support with default features

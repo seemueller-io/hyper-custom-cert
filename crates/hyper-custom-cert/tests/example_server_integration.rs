@@ -25,7 +25,7 @@ async fn test_default_client_against_example_endpoints() {
     // let _response = client.request("http://localhost:8080/health").await.unwrap();
     // let _response = client.request("http://localhost:8080/status").await.unwrap();
     // let _response = client.request("http://localhost:8080/test/client/default").await.unwrap();
-    
+
     // For testing purposes, just verify the client exists
     let _ = client;
 }
@@ -55,13 +55,14 @@ fn test_timeout_configuration_for_example_server() {
 fn test_headers_configuration_for_example_server() {
     // Test custom headers configuration
     let mut headers = HashMap::new();
-    headers.insert("User-Agent".to_string(), "hyper-custom-cert-integration-test/1.0".to_string());
+    headers.insert(
+        "User-Agent".to_string(),
+        "hyper-custom-cert-integration-test/1.0".to_string(),
+    );
     headers.insert("X-Test-Client".to_string(), "integration".to_string());
     headers.insert("Accept".to_string(), "application/json".to_string());
 
-    let client = HttpClient::builder()
-        .with_default_headers(headers)
-        .build();
+    let client = HttpClient::builder().with_default_headers(headers).build();
 
     // Smoke test - verify header configuration compiles
     let _ = client;
@@ -71,7 +72,10 @@ fn test_headers_configuration_for_example_server() {
 fn test_combined_configuration_for_example_server() {
     // Test combining multiple configuration options
     let mut headers = HashMap::new();
-    headers.insert("User-Agent".to_string(), "hyper-custom-cert-combined-test/1.0".to_string());
+    headers.insert(
+        "User-Agent".to_string(),
+        "hyper-custom-cert-combined-test/1.0".to_string(),
+    );
 
     let client = HttpClient::builder()
         .with_timeout(Duration::from_secs(30))
@@ -132,9 +136,7 @@ fn test_rustls_cert_pinning_configuration() {
     let dummy_pin = [0u8; 32];
     let pins = vec![dummy_pin];
 
-    let client = HttpClient::builder()
-        .with_pinned_cert_sha256(pins)
-        .build();
+    let client = HttpClient::builder().with_pinned_cert_sha256(pins).build();
 
     // Smoke test - verify cert pinning compiles
     let _ = client;
@@ -171,18 +173,18 @@ async fn test_request_options() {
     use hyper_custom_cert::RequestOptions;
     use std::collections::HashMap;
     use std::time::Duration;
-    
+
     // Test RequestOptions functionality
     let client = HttpClient::new();
-    
+
     // Create request options
     let mut headers = HashMap::new();
     headers.insert("X-Custom-Header".to_string(), "test-value".to_string());
-    
+
     let options = RequestOptions::new()
         .with_headers(headers)
         .with_timeout(Duration::from_secs(15));
-        
+
     // Smoke test - verify request options can be used with both GET and POST
     // In real usage:
     // let _get_resp = client.request("https://example.com", Some(options.clone())).await.unwrap();
